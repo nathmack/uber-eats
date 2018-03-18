@@ -1,0 +1,7 @@
+use regex search to scrub sensitive data
+
+"address".*?\},
+"customerInfo".*?\},
+"states".*?checkoutInfo
+"deliveryLocation".*?\},
+"location".*?\},

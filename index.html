@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="./data.js" type="text/javascript"></script>
+  <script src="./utils.js" type="text/javascript"></script>
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700" rel="stylesheet">
+  <style type="text/css">
+    body {
+      background: #ecf0f1;
+      font-family: 'Open Sans', sans-serif;
+      padding: 0;
+      margin: 0;
+    }
+
+    section {
+      width: 100%;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+    }
+
+    #statistics {
+      width: 80%;
+      margin-bottom: 30px;
+      text-align: left;
+    }
+
+    section:nth-child(2) {
+      background: #2980b9;
+    }
+    section:nth-child(4) {
+      background: #27ae60;
+    }
+
+    .content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .chart-actions {
+      margin-bottom: 6px;
+      margin-left: 20px;
+      text-align: left;
+    }
+
+    .chart-actions > span {
+      font-weight: 600;
+      color: #3498db;
+      cursor: pointer;
+      text-transform: uppercase;
+    }
+
+    .chart-actions > span.active-heading {
+      box-shadow: inset 0 -1px 0px #ecf0f1, inset 0 -3px 0 #3498db;
+    }
+
+    /* chart */
+    .time-series {
+      position: relative;
+      background: #2c3e50;
+      color: white;
+      display: flex;
+      flex-direction: row-reverse;
+      text-align: left;
+    }
+
+    .legend {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-around;
+      padding: 109px 50px 125px 0;
+    }
+
+    .legend > div {
+      display: flex;
+      justify-content: space-between;
+      cursor: pointer;
+    }
+
+    .legend > div > div {
+      margin-left: 10px;
+    }
+
+    .bar {
+      transition: opacity 0.2s, scale 0.2s;
+    }
+
+    .active {
+      stroke-width: 3;
+      stroke: yellow;
+    }
+
+    .axis-dark .tick,
+    .axis-dark .tick > line,
+    .axis-dark .domain {
+      stroke-width: 0.5;
+      stroke: #2c3e50;
+    }
+
+    .axis-light .tick,
+    .axis-light .tick > line,
+    .axis-light .domain {
+      stroke-width: 0.5;
+      stroke: white;
+    }
+
+    .axis-light .tick > text {
+      stroke: none;
+      fill: white;
+    }
+
+    .tick > text {
+      font-size: 16px;
+    }
+
+    .hover-bar {
+      stroke-width: 5;
+      stroke: #16a085;
+    }
+
+    .fade {
+      opacity: 0.25;
+    }
+
+    /* Tooltip */
+    .tooltip {
+      position: absolute;
+      background: #ecf0f1;
+      border: solid black 1px;
+      border-radius: 4px;
+      box-shadow: 5px 5px 5px 0 rgba(45, 52, 54, 0.6);
+      padding: 5px;
+      color: black;
+    }
+
+    .restaurants {
+      border-top: solid 1px black;
+      font-size: 12px;
+      list-style: none;
+      margin: 0;
+      padding: 10px;
+    }
+
+    .spend {
+      padding: 10px;
+      color: #192a56;
+      font-weight: 600;
+    }
+
+    /* stats */
+    .statsGroup {
+      color: #ecf0f1;
+    }
+
+    .heading {
+      font-size: 38px;
+      font-weight: 300;
+      text-transform: uppercase;
+      text-decoration: underline;
+      margin-top: 50px;
+      margin-bottom: 20px;
+    }
+
+    .stats {
+      display: flex;
+      flex-wrap: wrap;
+    }
+
+    .value {
+      font-size: 32px;
+    }
+
+    .stats > div {
+      font-size: 20px;
+      width: 33%;
+      margin-top: 20px;
+      font-weight: bold;
+    }
+
+    .stats > div > div:first-child {
+      font-weight: normal;
+      color: #dee3e6;
+      margin-bottom: 10px;
+    }
+  </style>
+  <title>Take away</title>
+</head>
+<body>
+  <div class="content">
+    <section id="chart">
+      <h1>Uber Eats orders visualised</h1>
+      <div class="chart-actions" onclick="handleChartClick(event)">
+        <span data-type="weekly" class="active-heading">Weekly</span> -
+        <span data-type="monthly">Monthly</span> |
+        <span data-type="byHour">Hour</span> -
+        <span data-type="byDay">Day</span> |
+        <span data-type="byType">Type</span> -
+        <span data-type="byRestaurant">Restaurant</span> -
+        <span data-type="byMeal">Meal</span>
+      </div>
+      <div class="time-series">
+        <div id="legend" class="legend">
+        </div>
+      </div>
+    </section>
+    <section>
+      <h1 style="margin-bottom: 0; color: #ecf0f1;">General statistics</h1>
+      <div id="statistics">
+      </div>
+    </section>
+    <section>
+      <h1>Visualising data spread and outliers amongst different data sets.</h1>
+      <div id="outliers">
+      </div>
+    </section>
+  </div>
+
+  <script src="../d3/d3.min.js" charset="utf-8"></script>
+  <!-- <script src="https://d3js.org/d3.v5.js"></script> -->
+  <script type="text/javascript">
+    // handlers
+    function handleChartClick(e) {
+      if (e.target.nodeName !== 'SPAN') return
+      const key = e.target.getAttribute('data-type')
+
+      // reset the chart and update the heading
+      d3.select(".chart-area").selectAll("*").remove();
+      d3.select('#legend').selectAll("*").remove();
+      d3.selectAll('.chart-actions > span').classed('active-heading', false)
+      d3.select(e.target).classed('active-heading', true)
+
+      // render the new chart
+      renderChart(groupedData[key])
+    }
+
+    function buildDateRange() {
+      const now = Date.now()
+      let date = getFirstWeekDay(data.orders.slice(-1)[0].completionStatus.completionTime).getTime()
+      let dateRanges = {}
+
+      while (date < now) {
+        const dateObj = new Date(date)
+
+        dateRanges = { ...dateRanges, [displayLongDate(dateObj)]: [] }
+        date += daysToMs(7)
+      }
+      return dateRanges
+    }
+
+    function formatMonth(label, i, chartData) {
+      if (i === 0) return label
+      if (label.startsWith('January')) return label
+      return label.slice(0, 3)
+    }
+    function formatWeek(label, i, chartData) {
+      if (i === 0) return label
+      const prevLabel = chartData[i - 1][0] || ''
+
+      if (label.slice(0, 3) === prevLabel.slice(0, 3)) return ''
+      if (label.startsWith('Jan')) return label
+      return label.slice(0, 3)
+    }
+    function formatPrice(i, chartData) {
+      return `$${Math.round(d3.sum(getSpendTotals(chartData[i][1])))}`
+    }
+
+    // grouped data
+    const groupedData = {
+      monthly: {
+        chartData: Object.entries(
+          group(data => displayShortDate(new Date(data.completionStatus.completionTime)))
+        ).sort(dateSort),
+        formatLabel: (label, i, chartData) => formatMonth(label, i, chartData),
+        mouseoutLabel: (selection, d, label, chartData) => selection.text(formatMonth(label, d.index, chartData)),
+        mouseoverLabel: (selection, d, label, chartData) => selection.text(label),
+      },
+      weekly: {
+        chartData: Object.entries(
+          group(data => displayLongDate(getFirstWeekDay(data.completionStatus.completionTime)),
+          buildDateRange(),
+          )
+        ).sort(dateSort),
+        formatLabel: (label, i, chartData) => formatWeek(label, i, chartData),
+        mouseoutLabel: (selection, d, label, chartData) => selection.text(formatWeek(label, d.index, chartData)),
+        mouseoverLabel: (selection, d, label, chartData) => selection.text(label),
+      },
+      byMeal: {
+        chartData: Object.entries(
+          group(data => {
+            const hour = new Date(data.completionStatus.completionTime).getHours()
+
+            if (hour < 12 && hour > 7) return 'Breakfast'
+            if (hour < 18) return 'Lunch'
+            return 'Dinner'
+          })
+        ).sort(arraySort),
+      },
+      byHour: {
+        chartData: Object.entries(
+          group(
+            data => {
+              const hours = new Date(data.completionStatus.completionTime).getHours()
+
+              return `${hours % 12 || 12}${hours < 12 ? 'am' : 'pm'}`
+            },
+            { '9am': [], '10am': [], '11am': [], '12pm': [], '1pm': [], '2pm': [], '3pm': [], '4pm': [], '5pm': [], '6pm': [], '7pm': [], '8pm': [], '9pm': [], '10pm': [], '11pm': [], '12am': [], '1am': [], '2am': [], }
+          )
+        ),
+      },
+      byDay: {
+        chartData: Object.entries(
+          group(
+            data => days[new Date(data.completionStatus.completionTime).getDay()],
+            days.reduce((prev, day) => ({ ...prev, [day]: [] }), {})
+          )
+        ),
+      },
+      byType: {
+        chartData: Object.entries(group(data => mapFoodType(data.storeName)))
+          .sort(arraySort),
+      },
+      byRestaurant: {
+        chartData: Object.entries(group(data => data.storeName))
+          .sort(arraySort),
+      },
+    }
+
+    // chart
+    const margin = { top: 110, right: 20, bottom: 130, left: 80 }
+    const chartHeight = 670
+    const chartWidth = 1100
+    const height = chartHeight - margin.top - margin.bottom
+    const width = chartWidth - margin.left - margin.right
+
+    const svg = d3.select('.time-series')
+      .append('svg')
+        .attr('width', chartWidth)
+        .attr('height', chartHeight)
+      .append('g')
+        .attr('class', 'chart-area')
+        .attr('width', width)
+        .attr('height', height)
+        .attr('transform', `translate(${margin.left}, ${margin.top})`)
+
+    // render
+    function renderChart({ chartData, formatLabel, mouseoutLabel = defaultMouseoutLabel, mouseoverLabel = () => {} }) {
+      const data1 = chartData
+        .map(([key, value]) => ({
+          ...countGroup(value, order => mapFoodType(order.storeName)),
+        }))
+      const keys1 = foodTypes
+      const labels = chartData.map(d => d[0])
+      const maxY = d3.max(chartData, d => d[1].length)
+
+      const x = d3.scaleBand()
+        .padding(0.25)
+        .domain(labels)
+        .range([0, width])
+      const y = d3.scaleLinear()
+        .domain([0, maxY + 1])
+        .range([0, height])
+      const z = d3.scaleOrdinal(d3.schemeCategory10)
+
+      const yAxis = d3.scaleLinear()
+        .domain([0, maxY + 1])
+        .range([height, 0])
+
+      const series = d3.stack()
+          .keys(keys1)
+          .offset(d3.stackOffsetDiverging)
+          (data1)
+
+      // select SVG
+      const rects = svg
+        .selectAll('rect')
+        .data(chartData)
+
+      // Enter
+      const enter = rects
+        .enter()
+
+      // Update /  All visible
+      rects.merge(enter)
+        .append('g')
+        .attr("class", 'rect-bar')
+      .selectAll("rect")
+        .data((d, i) => series.map(d => ({ ...d[i], index: i, key: d.key })))
+      .enter().append("rect")
+        .attr('class', d => `bar-${joinString(d.key)}`)
+        .attr('x', d => x(chartData[d.index][0]))
+        .attr("width", x.bandwidth() || 0)
+        .attr("y", d => height - y(d[0]) - y(d[1] - d[0]) || 0)
+        .attr("height", d => y(d[1] - d[0]) || 0)
+        .attr("fill", (d, i) => z(keys1[i]))
+        .on('mouseover', (d, i, elements) => {
+          const legendWidth = document.getElementById("legend").getBoundingClientRect().width
+          const legendMapping = Object.keys(d.data).map(d => `.${joinString(d)}`).join()
+          const label = labels[d.index]
+          const yValue = chartData[d.index][1].length
+          const tooltipPadding = 10
+          const tooltipYOffset = margin.top + height - y(chartData[d.index][1].length)
+          let tooltipXOffset = margin.left + x.bandwidth() + x(chartData[d.index][0]) + tooltipPadding
+          const right = tooltipXOffset + 140 > width
+
+          if (right) tooltipXOffset = -legendWidth - margin.right - (width - x(chartData[d.index][0])) - tooltipPadding
+          const getRestaurants = orders => {
+            return orders.reduce((prev, order) => ({
+              ...prev, [order.storeName]: (prev[order.storeName] || 0) + 1
+            }), {})
+          }
+
+          d3.select('.time-series')
+            .append('div')
+              .attr('class', 'tooltip')
+              .style(right ? 'right' : 'left', 0)
+              .style('transform', `translate(${tooltipXOffset}px, ${tooltipYOffset}px)`)
+            .append('div')
+              .attr('class', 'spend')
+              .text(`Spend: ${formatPrice(d.index, chartData)}`)
+          d3.select('.tooltip')
+            .append('ul')
+            .attr('class', 'restaurants')
+            .selectAll('li')
+              .data(Object.entries(getRestaurants(chartData[d.index][1])))
+              .enter()
+              .append('li')
+              .html(d => `<span>${defaultFormatLabel(d[0], 20)}${d[1] > 1 ? '<b> x ' + d[1] + '</b>' : ''}</span>`)
+
+          d3.selectAll('.legend > div')
+            .classed('fade', true)
+          d3.selectAll(legendMapping)
+            .classed('fade', false)
+          d3.selectAll(`.y-text-label:not(.label-${yValue})`)
+            .classed('fade', true)
+
+          d3.selectAll(`.rect-bar,.text-label:not(.label-${joinString(label)})`)
+            .filter(':not(:hover)')
+            .classed('fade', true)
+            .filter('text')
+
+          d3.selectAll(`.text-label.label-${joinString(label)}`)
+            .call((selection) => mouseoverLabel(selection, d, label, chartData))
+        })
+        .on('mouseout', (d, i, elements) => {
+          const label = labels[d.index]
+
+          d3.select('.tooltip').remove();
+
+          d3.selectAll('.legend > div, .y-text-label, .rect-bar, .text-label')
+            .classed('fade', false)
+
+          d3.selectAll(`.text-label.label-${joinString(label)}`)
+            .call((selection) => mouseoutLabel(selection, d, defaultFormatLabel(label), chartData))
+        })
+
+      // Axes
+      // Y
+      svg
+        .append('g')
+          .call(
+            d3.axisLeft(yAxis)
+            .ticks(maxY > 20 ? 20 : maxY)
+          )
+          .attr('class', 'y-axis axis-light')
+          .selectAll('text')
+          .attr("class", (d, i) =>  'y-text-label ' + joinString(`label-${d}`))
+      // X
+      svg
+        .append('g')
+          .call(
+            d3.axisBottom(x)
+            .ticks(chartData.length)
+            .tickFormat(formatLabel
+              ? (label, i) => formatLabel(label, i, chartData)
+              : label => defaultFormatLabel(label)
+            )
+          )
+          .attr('class', 'x-axis axis-light')
+          .attr('transform', `translate(0, ${height})`)
+          .selectAll('text')
+          .style('text-anchor', 'end')
+          .attr("class", (d, i) =>  'text-label ' + joinString(`label-${d}`) + ' ' + Object.keys(data1[i]).map(d => joinString(d)).join(' '))
+          .attr('transform', 'rotate(-45)')
+
+      // Legend
+      d3.select('#legend')
+        .selectAll('div')
+        .data(keys1)
+        .enter()
+        .append('div')
+          .attr('class', d => joinString(d))
+          .text(d => d)
+          .on('mouseover', (d, i) => {
+            d3.selectAll('.legend > div:not(:hover)')
+              .classed('fade', true)
+
+            d3.selectAll(`.tick > text:not(.${joinString(keys1[i])})`)
+              .classed('fade', true)
+
+            d3.selectAll(`.tick .${joinString(d)}`)
+              .text((d, i) => defaultFormatLabel(d))
+
+            d3.selectAll('rect')
+              .classed('active', true)
+              .filter(`:not(.bar-${joinString(keys1[i])})`)
+              .classed('active', false)
+              .classed('fade', true)
+          })
+          .on('mouseout', (d) => {
+            d3.selectAll('.legend > div:not(:hover)')
+              .classed('fade', false)
+            d3.selectAll('rect')
+              .classed('active', false)
+              .classed('fade', false)
+            d3.selectAll('.tick > text')
+              .classed('fade', false)
+            d3.selectAll(`.x-axis > .tick > text`)
+              .each(function(d, index) {
+                mouseoutLabel(
+                  d3.select(this),
+                  { index },
+                  defaultFormatLabel(labels[index]),
+                  chartData
+                )
+              })
+          })
+        .append('div')
+          .style('background', d => z(d))
+          .style('width', '20px')
+          .style('height', '20px')
+        .exit()
+        .remove()
+
+      // Exit
+      rects
+        .exit()
+        .remove()
+    }
+
+    // weekly, monthly, byType, byHour, byMeal, byDay
+    renderChart(groupedData.weekly)
+
+
+    // Statistics
+    const items = filterOutliers(orderItemCounts(data.orders))
+    const spends = filterOutliers(getSpendTotals(data.orders))
+    const orderTimes = getOrderTimes(data.orders)
+    const OrderFrequencies = orderTimes
+      .sort(numberSort)
+      .reverse()
+      .map((time, i) => i === 0 ? null : orderTimes[i - 1] - time)
+      .filter(time => time !== null)
+
+    const totalSpend = d3.sum(spends)
+    const totalItemsOrdered = d3.sum(items)
+
+    const averageSpendPerOrder = d3.mean(spends)
+    const averageItemsOrdered = d3.mean(items)
+
+    const OrderPerWeek = (data.orders.length / groupedData.weekly.chartData.length).toFixed(2)
+    const SpendPerWeek = totalSpend / groupedData.weekly.chartData.length
+
+    const averageOrderFrequency = d3.mean(OrderFrequencies)
+    const [minimumFrequency, maximumFrequency] = d3.extent(OrderFrequencies)
+
+    const statsData = {
+      frequecy: [
+        { label: 'Average Frequency', value: `${msToDays(averageOrderFrequency)} days` },
+        { label: 'Longest Frequency', value: `${msToDays(maximumFrequency)} days` },
+        { label: 'Shortest Frequency', value: `${(minimumFrequency / 1000 / 60).toFixed(1)} minutes` },
+      ],
+      totals: [
+        { label: 'Spent', value: formatDollars(totalSpend) },
+        { label: 'Ordered', value: data.orders.length },
+        { label: 'Items Ordered', value: totalItemsOrdered },
+        { label: 'Restaurants', value: groupedData.byRestaurant.chartData.length },
+      ],
+      averages: [
+        { label: 'Spend Per Order', value: formatDollars(averageSpendPerOrder) },
+        { label: 'Items Per Order', value: averageItemsOrdered.toFixed(2) },
+        { label: 'Orders Per week', value: OrderPerWeek },
+        { label: 'spend Per week', value: formatDollars(SpendPerWeek) },
+      ],
+    }
+
+    function renderStatistics(stats, title) {
+      const statsGroup = d3.select('#statistics')
+        .append('div')
+          .attr('class', 'statsGroup')
+
+      statsGroup
+        .append('h2')
+          .attr('class', 'heading')
+        .text(title)
+      statsGroup
+        .append('div')
+          .attr('class', 'stats')
+        .selectAll('div')
+          .data(stats)
+          .enter()
+          .append('div')
+          .html(d => `<div>${d.label}</div><div class="value">${d.value}</div>`)
+    }
+
+    renderStatistics(statsData.totals, 'Totals')
+    renderStatistics(statsData.averages, 'Averages')
+    renderStatistics(statsData.frequecy, 'Order Frequency')
+  </script>
+  <script src="./box.js" type="text/javascript"></script>
+</body>
+</html>

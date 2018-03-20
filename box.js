@@ -86,7 +86,7 @@
         .attr('stroke', '#1abc9c')
         .attr('stroke-width', 1)
         .attr('fill', 'none')
-        .attr('opacity', 0.25)
+        .attr('opacity', 0.40)
 
     // box
     svg

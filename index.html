@@ -277,7 +277,8 @@
     }
 
     function buildDateRange() {
-      const now = Date.now()
+      // set last date in range
+      const now = new Date('03-5-2018').getTime()
       let date = getFirstWeekDay(data.orders.slice(-1)[0].completionStatus.completionTime).getTime()
       let dateRanges = {}
 

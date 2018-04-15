@@ -164,6 +164,7 @@
       flex-direction: column;
       align-items: center;
       margin-left: 60px;
+      width: 100%;
     }
 
     .statsGroup:nth-child(1) {
@@ -195,7 +196,6 @@
       margin-top: -20px;
       margin-left: -20px;
       justify-content: space-around;
-      width: 600px;
     }
 
     .stat-box {
@@ -203,8 +203,8 @@
       background: #ecf0f1;
       margin-top: 20px;
       margin-left: 20px;
-      width: 280px;
-      height: 280px;
+      width: 260px;
+      height: 260px;
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -222,7 +222,7 @@
       font-size: 24px;
       color: #16a085;
       color: #2c3e50;
-      font-weight: normal;
+      font-weight: lighter;
       position: absolute;
       bottom: 30px;
     }
@@ -611,7 +611,7 @@
       frequecy: [
         { label: 'Average Frequency', value: `${msToDays(averageOrderFrequency)} days` },
         { label: 'Longest Frequency', value: `${msToDays(maximumFrequency)} days` },
-        { label: 'Shortest Frequency', value: `${(minimumFrequency / 1000 / 60).toFixed(1)} minutes` },
+        { label: 'Shortest Frequency', value: `${(minimumFrequency / 1000 / 60).toFixed(1)} mins` },
       ],
       totals: [
         { label: 'Spent', value: formatDollars(totalSpend) },
